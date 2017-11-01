@@ -76,8 +76,314 @@
 	javascript语言最为糟糕的就是他对全局变量的依赖性。全局变量就是在所有作用域中都可见的变量。全局变量在很小的程序中可能会带来方便。但随着程序越来越大，它很快变得难以处理。因为一个全局变量可以被程序的任何部分在任意时间改变，使得程序的行为被极大地复杂化。在程序中使用全局变量降低了程序的可靠性。
 	全局变量使在同一个程序中运行独立的子程序变得更难。如果某些全局变量的名称与子程序中的变量名称相同，那么他们将会相互冲突并可能导致程序无法运行，而且通常还使程序难以调试。
 	实际上，这些全局变量削弱了程序的灵活性，应该避免使用全局变量。努力减少使用全局变量的方法:在应用程序中创建唯一一个全局变量，并定义该变量为当前应用的容器。
-	var My
+	var My = {};
+	My.name = {
+		"first-name":"first",
+		"last-name":"last"
+	};
+	My.work = {
+		number:123,
+		one:{
+			name:"accounting",
+			time:"2014-9-14 12:55",
+			city:"quanzhou"
+		},
+		two:{
+			name:"programmer",
+			time:"2015-9-14 12:55",
+			city:"guangzhou"
+		}
+	};
+	只要把多个全局变量都追加在一个名称空间下，将显著降低与其他应用程序产生冲突的概率，应用程序也会变得更容易阅读，因为My.work指向的是顶层结构。当然也可以使用闭包体将信息隐藏，它是另一种有效减少“全局污染”的方法。
+	在编程语言中，作用域控制着变量与参数的可见性及生命周期。这为程序开发提供了一个重要的帮助，因为它减少了名称冲突，并且提供了自动内存管理。
+	var foo = function(){
+		var a = 1,b = 2;
+		var bar = function(){
+			var b = 3 ,c = 4;
+			a += b + c;
+		}
+		bar();
+	}foo(); //a = 1 + 3 + 4 = 8
+	大多数采用C语言语法的语言都拥有块级作用域。对于一个代码块，即包括在一对大括号中的语句，其中定义的所有变量在代码块的外部是不可见的。定义在代码块中的变量在代码块执行结束后会被释放掉。但是，对于Javascript语言来说，虽然该语言支持代码块的语法形式，但是它并不支持块级作用域。
+	javascript支持函数作用域，定义在函数中的参数和变量在函数外部是不可见的，并且在一个函数中的任何位置定义的变量在该函数中的任何地方都可见。
+	其他主流编程语言都推荐尽可能迟地声明变量，但是在javascript中就不能够这样，因为它缺少块级作用域，最好的做法是在函数体的顶部声明函数中可能用到的所有变量。
+	
+建议4：注意javascript数据类型的特殊性
+
+	1.防止浮点数溢出
+	二进制的浮点数不能正确地处理十进制的小数，因此0.1+0.2不等于0.3
+	num = 0.1 + 0.2;  //0.30000000000000004	
+	这是javascript中最经常报告的bug，并且这是遵循二进制浮点数算数标准(IEEE 754)而导致的结果。这个标准适合很多应用，但它违背了数字基本常识。幸运的是，浮点数中的整数运算是精确的，所以小数表现出来的问题可以通过指定精度来避免。例如，针对上面的相加可以这样进行处理：
+	a = (1+2)/10;     //0.3
+	这种处理经常在货币计算中用到，在计算货币时当然期望得到精确的结果。例如，元可以通过乘以100而全部转成分，然后就可以精确地将每项相加，求和后的结果可以除以100转换回元。
+	
+	2.慎用javascript类型自动转换
+	在javascript中能够自动转换变量的数据类型，这种转换是一种隐性行为。在自动转换数据类型时，javascript一般遵循：如果某个类型的值被用于需要其他类型的值的环境中，javascript就自动将这个值转换成所需要的类型。具体说明见表1.1
+	
+	表1.1 数据类型自动转换
+	值(value)				字符串操作环境		数字运算环境			逻辑运算环境		对象操作环境
+	undefined				"undefined"			NaN					false			Error
+	null					"null"				0					false			Error
+	非空字符串				不转换				字符串对应的数字值	
+	NaN						true				String
+	空字符串					不转换				0 					false 			String
+	0 						"0"					不转换				false			Number
+	NaN						"NaN"				不转换				false			Number
+	Infinity				"Infinity"			不转换				true			Number
+	Number.POSITIVE_INFINITY"Infinity"			不转换				true			Number
+	Number.NEGATIVE_INFINITY"-Infinity"			不转换				true			Number
+	Number.MAX_VALUE		"1.7976931348623157e+308"	不转换		true			Number
+	Number.MIN_VALUE		"5e-324"			不转换				true			Number
+	其他所有数字				"数字的字符串值"		不转换				true			Number
+	true 					"true"				1					不转换			Boolean
+	false					"false"				0					不转换			Boolean
+	对象						toString()			valueOf()或NaN      true				不转换
+												或 toString()						
+												
+	如果把非空对象用在逻辑运算环境中，则对象被转换为true。此时的对象包括所有类型的对象，即使是值为false的包装对象也被转换为true。
+	如果把对象用在数值运算环境中，则对象会被自动转换为数字，如果转换失败，则返回值为NaN。
+	当数组被用在数值运算环境中时，数组将根据包含的元素来决定转换的值。如果数组为空数组，则被转换为数值0.如果数组仅包含一个数字元素，则被转换为该数字的数值。如果数组包含多个元素，或者仅包含一个非数字元素，则返回NaN。
+	当对象用于字符串环境中时，javascript能够调用toString()方法把对象转换为字符串在进行相关计算。当对象与数值进行加号运算时，则会尝试将对象转换为数值，然后参与求和运算。如果不能够将对象转换为有效数值，则执行字符串连接操作。
+	
+	3.正确检测数据类型
+	使用typeof运算符返回一个用于识别其运算数类型的字符串。对于任何变量来说，使用typeof运算符总是以字符串的形式返回以下的6种类型之一：
+	"number"											
+	"string"
+	"boolean"
+	"object"
+	"function"
+	"undefined"
+	不幸的是，在使用typeof检测null值时，返回的是"object",而不是"null".更好的检测null的方式其实很简单。下面定义一个检测值类型的一般方法：
+	function type(o){
+		return (o === null) ? "null" : (typeof o);
+	}
+	这样就可以避开因为null值影响基本数据的类型检测。注意：typeof 不能够检测复杂的数据类型，以及各种特殊用途的对象，如正则表达式对象、日期对象、数学对象等。
+	对于对象或数组，可以使用constructor 属性，该属性值引用的是原来构造该对象的函数。如果结合typeof运算符和constructor 属性，基本能够完成数据类型的检测。表1.2所示列举了不同类型数据的检测结果。
+	
+	表1.2 数据类型检测
+	值(value)				typeof a(表达式返回值)       a.constructor(构造函数的属性值)
+	var a = 1				"number"						Number
+	var a = "a"				"string"						String
+	var a = true			"boolean"						Boolean
+	var a = {}				"object"						Object
+	var a = new Object()	"object"						Object
+	var a = []				"object"						Array
+	var a =  new Array()	"object"						Array
+	var a = function(){}	"function"						Function
+	function abs(){}		"object"						abs
+	
+	使用constructor 属性可以判断绝大部分数据的类型。但是，对于undefined和null特殊值，就不能使用constructor属性，因为使用javascript解释器会抛出异常。此时可以先把值转换为布尔值，如果为true,则说明不是undefined 和 null值，然后再调用constructor属性，例如：
+	var  value = undefined;
+	console.log(typeof value)                     	//"undefined"
+	console.log(value && value.constructor)			//"undefined"
+	var value = null;												
+	console.log(typeof value)						//"object"				
+	console.log(value && value.constructor)			//null
+	对于数值直接量，也不能使用constructor属性，需要加上一个小括号，这是因为小括号运算符能够把数值转换为对象，例如：
+	alert((10).constructor)
+	使用toString()方法检测对象类型是最安全的，最准确的。调用toString()方法把对象转换为字符串，然后通过检测字符串中是否包含数组所特有的标志字符可以确定对象的类型。toString()方法返回的字符串形式如下：
+	[object class]
+	其中，object表示对象的通用类型，class表示对象的内部类型，内部类型的名称与该对象的构造函数名对应。例如，Array对象的class为"Array",Function对象的class为"Function",Date对象的class为"Date"，内部Math对象的class为"Math",所有的Error对象(包括各种Error子类的实例)的class为'Error'.
+	客户端javascript的对象和由javascript实现定义的其他所有对象都具有预定义的特定class值，如"Window"、"Document" 和 "Form" 等。用户自定义对象的class值为"Object".
+	class值提供的信息与对象的constructor属性值相似，但是class值是以字符串的形式提供这些信息的，而不是以构造函数的形式提供这些信息的，所以在特定的环境中是非常有用的。如果使用typeof运算符来检测，则所有对象的class值都为"Object"或"Function"，所以此时的class值不能够提供这些有效信息。
+	但是，要获取对象的class值的唯一方法是必须调用Object对象定义的默认toString()方法，因为不同对象都会预定义自己的toString()方法，所以不能直接调用对象的toString()方法。例如，下面对象的toString()方法返回的就是当前UTC时间字符串，而不是字符串'[object Date]'.
+	var d = new Date();
+	console.log(d.toString());  //当前UTC时间字符串
+	要调用Object对象定义的默认toString()方法，可以先调用Object.prototype.toString对象的默认toString()函数，再调用该函数的apply()方法在想要检测的对象上执行。结合上面的对象d,具体实现代码如下：
+	
+//		下面是一个比较完整的数据类型安全检测方法
+//		
+//		安全检测javascript基本数据类型和内置对象
+//		参数:o表示检测的值
+//		返回值:返回字符串"undefined"、"number"、"boolean"、"string"、"function"、"regexp"、"array"、
+//		"date"、"error"、"object"、"null"
+		
+		function typeOf(o){
+			var _toString = Object.prototype.toString;
+			//获取对象的toString()方法引用
+			//列举基本数据类型和内置对象类型，可以进一步补充该数组的检测数据类型范围
+			var _type = {
+				"undefined":"undefined",
+				"number":"number",
+				"boolean":"boolean",
+				"string":"string",
+				"[object Function]":"fucntion",
+				"[object RegExp]":"regexp",
+				"[object Array]":"array",
+				"[object Date]":"date",
+				"[object Error]":"error"
+			}
+			return _type[typeof o] || _type[_toString.call(o)] || (o ? "object":"null");
+		}
+		
+		var b = Math.abs;
+		console.log(typeOf(b)) 		//"function"	
+	
+	上述方法适用于javascript基本数据类型和内置对象，而对于自定义对象是无效的。这是因为自定义对象被转换为字符串后，返回的值是没有规律的，并且不同浏览器的返回值也是不同的。因此，要检测非内置对象，只能够使用constructor属性和instaceof运算符来实现。
+	4.避免误用parseInt
+	parseInt是一个将字符串转换为整数的函数，与parseFloat(将字符串转换为浮点数)对应，这两种函数是javascript提供的两种静态函数，用于把非数字的原始值转换为数字。
+	在开始转换时，parseInt会先查看位置0处的字符，不如该位置不是有效数字，则将返回NaN，不再深入分析。如果位置0处的字符是数字，则将查看位置1处的字符，并重复前面的测试，依此类推，知道发现非数字字符为止，此时parseInt()函数将把前面分析合法的数字字符转换为数值并返回。
+	parseInt("123abc"); 		//123
+	parseInt("1.73");			//1
+	parseInt(".123");			//NaN
+	浮点数中的点号对于parseInt来说属于非法字符，因此它不会被转换并返回，这样，在使用parseInt时，就存在潜在的误用风险。例如，我们并不希望parseInt("16")与parseInt("16 tons")产生相同的结果。如果该函数能够提醒我们出现额外文本就很好了，但它不会那么做。
+	对于以0为开头的数字字符串，parseInt()函数会把它作为八进制数字处理，先把它转换为数值，然后再转换为十进制的数字返回。对于以0x开头的数字字符串，parseInt()函数则会把它作为十六进制数字处理，先把它转换为数值，然后再转换为十进制的数字返回。例如：
+	var d = "010"; 		//八进制
+	var e = "0x10";		//十六进制
+	parseInt(d);		//8
+	parseInt(e);		//16
+	如果字符串的第一个字符时0，那么该字符串将基于八进制而不是十进制来求值。在八进制中，8和9不是数字，所以parseInt("08")和parseInt("09")的结果为0，这个错误导致了在程序解析日期和时间经常会出现问题。幸运的是，parseInt可以接受一个基数作为参数，这样parseInt("08",10)结果为8.因此，建议读者在使用parseInt时，一定要提供这个基数参数。
+	通过在parseInt中提供技术参数，可以把二进制、八进制、十六进制等不同进制的数字字符串转换为整数。例如，下面把十六进制数字字符串"123abc"转换为十进制整数。
+	parseInt("123abc",16) //1194684 (12*1+11*16+10*16^2+3^16^3+2*16^4+1*16^5=1194684)
+	再如，把二进制、八进制和十进制数字字符串转换为整数：
+	parseInt("10",2);		//把二进制数字10转换为十进制整数为2
+	parseInt("10",8);		//把八进制数字10转换为十进制整数为8
+	parseInt("10",10);		//把十进制数字10转换为十进制整数为10
+	
+建议5：防止javascript自动插入分号
+	javascript语言有一个机制：在解析时，能够在一句话后面自动插入一个分号，用来修改语句末尾遗漏的分号分隔符。然而，由于这个自动插入的分号与javascript语言的另一个机制发生了冲突，即所有空格符都被忽略，因此程序可以利用空格格式化代码。
+	这两种机制的冲突，很容易掩盖更为严重的解析错误。有时会不合时宜地插入分号。例如，在return语句中自动插入分号将会导致这样的后果：如果return语句要返回一个值，这个值的表达式的开始部分必须和return在同一行上，例如：
+	var f = function(){
+		return
+		{
+			status：true
+		};
+	}
+	看起来这里要返回一个包含status成员元素的对象。不幸的是，javascript自动插入分号让它返回了undefined，从而导致下面真正要返回的对象被忽略。
+	当自动插入分号导致程序被误解时，并不会有任何警告提醒。如果把{放在上一行尾部，而不是另开一行，就可以避免这样问题。例如：
+	var f = function(){
+		return{
+			status：true
+		};
+	}
+	为了避免省略分号引起的错误，建议养成好的习惯，不管一行内语句是否完整，只要是完整的语句都必须增加分号以表示句子结束。
+	为了方便阅读，当长句子需要分号显示时，在分行时应确保一行内不能形成完整的逻辑语义。例如，下面代码时一条连续赋值的语句，通过分行显示可以更清楚地查看它们的关系。这种分行显示，由于一行内不能形成独立的逻辑语义，因此javascript不会把每一行视为独立的句子，从而不会产生歧义。
+	var a = 
+		b = 
+		c = 4;
+	以上语句在一行内显示如下：
+	var a = b = c = 4;
+	对于下面这条语句，如果不能正确分行显示，就很容易产生分歧。该语句的含义：定义一个变量i，然后为其赋值，如果变量a为true,则赋值为1，否则就判断变量b,如果b为true，则赋值为2，否则就判断变量c，如果c为true,则赋值为3，否则赋值为4。
+	var i = a ? 1 : b ? 2 : c ? 3 : 4;
+	下面的分行显示就是错误的，因为表达式a?1:b能够形成独立的逻辑语义，所以javascript会自动在其后添加分号来表示一个独立的句子。
+	var i = a ? 1 : b
+			? 2 : c
+			? 3 : 4;
+	安全的方法应该采用如下的分行显示，这样每一行就不会形成独立的语义。
+	var i = a ? 1 
+			: b ? 2
+			: c ？ 3
+			： 4;
+	总之，在编写代码时，应养成使用分号结束句子的良好习惯，凡是完整的句子就应该使用分号进行分隔。分行显示的句子应该确保单行不容易形成独立的合法的逻辑语义。
+	
+建议6：正确处理javascript特殊值
+	1.正确使用NaN 和 Infinity
+	NaN时IEEE 754中定义的一个特殊的数量值。他不表示一个数字，尽管下面的表达式返回的是true.
+	typeof NaN === "number"  //true
+	该值可能会在试图将非数字形式的字符串转换为数字时产生，例如：
+	+ "0" 		// 0
+	+ "oops" 	//NaN
+	如果NaN是数学运算中的一个运算数，那么它与其他运算数的运算结果就会是NaN.如果有一个表达式产生出NaN的结果，那么至少其中一个运算数是NaN，或者在某个地方产生了NaN。
+	可以对NaN进行检测，但是typeof 不能辨别数字和NaN的区别，并且NaN不等同于它自己，所以，下面的代码结果令人惊讶。
+	NaN === NaN 		//false
+	NaN ！== NaN 		//true
+	为了方便检测NaN值，javascript提供isNaN静态函数，以辨别数字与NaN区别。
+	isNaN(NaN)			//true
+	isNaN(0)			//false
+	isNaN('oops')		//true
+	isNaN("0")			//false
+	判断一个值是否可用做数字的最佳方法是使用isFinite函数，因为它会筛除掉NaN和Infinity.Infinity表示无穷大。当数值超过浮点数所能够表示的范围时，就要用Infinity表示。反之，负无穷大为 -Infinity.
+	使用isFinite函数能够检测NaN、正负无穷大。如果是有限数值，或者可以转换为有限数值，那么将返回true.如果只是NaN、正负无穷大的数值，则返回false.
+	不幸的是，isFinite会试图把它的运算数转换为一个数字。因此，如果值不是一个数字，使用isFinite函数就不是一个有效的检测方法，这时不妨自定义isNumber函数。
+	var isNumber = function (value){
+		return typeof value === "number" && isFinite(value);
+	}
+	
+	2.正确使用 null 和 undefined
+	javascript有5种基本类型：String、Number、Boolean、Null和 Undefined.前3种都比较好理解，后面两种就稍微复杂点。Null类型只有一个值，就是null;Undefined类型也只有一个值，即undefined。null和undefined都可以作为字面量在javascript代码种直接使用。
+	null与对象引用有关系，表示为空或不存在的对象引用。当声明一个变量却没有向它赋值的时候，它的值就是undefined.undefined的值会在如下情况中出现：
+	从一个对象中获取某个属性，如果该对象及其prototype链中的对象都没有该属性，该属性的值为undefined.
+	一个函数如果没有显示通过return语句将返回的值返回给其调用者，其返回值就是undefined，但在使用new调用函数时例如。
+	javascript的函数可以声明任意多个形参，当该函数实际被调用时，传入的参数的个数如果小于声明的形式参数的个数，那么多余的形式参数的值为undefined.
+	如果对值为null的变量使用typeof检测，得到的结果是"object",而typeof undefined的值为"undefined"。null == undefined, null !== undefined.
+	与null不同，undefined 不是javascript的保留字，在ECMAScript v3标准中才定义undefined 为全局变量，初始值为undefined.因此，在使用undefined值时就存在一个兼容问题(早期浏览器可能不支持undefined).除了直接赋值和使用typeof运算符外，其他任何运算符对 undefined的操作都会引发异常。不过，可以声明undefined变量，然后查看它的值，如果它的值为undefined，则说明浏览器支持undefined值。例如：
+	var undefined;
+	conosole.log(undefined);
+	如果浏览器不支持undefined关键字，可以自定义undefined变量，并将其赋值为undefined。
+	例如：
+		var undefined = void null;
+		声明变量为undefined,将其初始化为表达式void null的值，由于运算符void在执行其后的表达式时会忽略表达式的结果值，而总是返回值undefined，因此利用这种方法可以定义一个变量为undefined,并将其赋值为undefined。既然时将变量undefined 赋值为 undefined，还有以下方式：
+		var undefined = void 1;
+		或者使用没有返回值的函数：
+		var undefined = function(){}();
+		alert(undefined); //"undefined"
+		可以使用typeof运算符来检测某个变量的值是否为undefined:
+		var a;
+		if(typeof a == "undefined"){
+		
+		}
+		
+		3.使用假值
+		javascript的类型系统时非常混乱的，类型特性不明显，而且交叉错乱。javascript语法系统拥有一大组假值，如下所示。这些值的布尔值都是false.
+		0               	//Number
+		NaN					//N
+		''					//String
+		false				//Boolean
+		null				//Object
+		undefined			//Undefined
+		
+		这些值全部都等同于false,但它们是不可互换的。例如，下面用法是错误的。
+		value = myObject[name];
+		if(value == null){
+		}
+		这是在用一种错误的方式去确定一个对象是否缺少一个成员属性。undefined是缺失的成员属性值，而上面代码片段用null来测试，使用了会强制类型转换的==运算符，而不是更可靠的===运算符。
+		value = myObject[name];
+		if(!value){
+		}
+		undefined和NaN并不是常见，他们是全局变量，还可以改变他们的值，虽然在程序设计中不应该采取这种做法，但可以改变他们的值。
+		
+
+建议7：小心保留字的误用
+	表1.3 javascript 语言中定义的保留字
+	
+	首字母			保留字
+	a				abstract
+	b				boolean、break、byte
+	c				case、catch、char、class、const、continue
+	d				debugger、default、delete、do、double
+	e				else、enum、export、extends
+	f				false、final、finally、float、for、function
+	g				goto
+	i				if、implements、import、in、instanceof、int、interface
+	l				long
+	n				native、new、null
+	p				package、private、protected、public
+	r				return
+	s				short、static、super、switch、synchronized
+	t				this、throw、throws、transient、true、try、typeof
+	v				var、volatile、void
+	w				while、with
+	
+	这些单词中的大多数并没有在语言中使用，但是根据javascript语法规则，这些单词是不能用来命名变量或参数的。当保留字作为对象字面量的键值时，必须用引号括起来。保留字不能用在点语法中，所以有时必须使用中括号表示法。例如，下面的用法是合法的。
+	var method;
+	object = {box: value};
+	object = {'case': value};
+	object.box = valuel;
+	object['case'] = value;
+	但是，下面的用法就是非法的。
+	var class;
+	object = {case: value};
+	object.case = value;
+	各个浏览器对保留字的使用限制不同。例如，下面代码在Firefox中是合法的，而在其他浏览器中就是不合法的。
+	object = {case: value};
+	此外，不同的保留字也各不相同。例如，下面代码在Firefox和Opera 9.5中是合法的，但在IE和Safari中是不合法的。
+	object = {class: value};
+	对于int、long、float等保留字，他们在各浏览器中都可以用做变量名及对象字面量的键值。尽管如此，在这些场合依然不建议使用任何保留字。
+	
+建议8：谨慎使用运算符
+	1.用===，而不用==
+	javascript有两组相等运算符：=== 和 !==、 ==和!=、===和!==这一组运算符会按照期望的方式工作。如果两个运算数类型一致且拥有相同的值，那么===返回true,而!==返回false。==和!= 只有在两个运算数类型一致时才会做出正确的判断，如果两个运算数是不同的类型，会试图强制转换运算数的类型。转换的规则复杂且难以记忆，具体规则如下：
+		
 	
 	
-	
-	
+							
